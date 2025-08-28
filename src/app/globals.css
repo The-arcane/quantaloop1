@@ -1,0 +1,147 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
+  }
+  :root {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 15%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 193 100% 54%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 173 97% 58%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 222 47% 20%;
+    --muted-foreground: 210 40% 65%;
+    --accent: 173 97% 48%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 245 100% 68%;
+    --input: 222 47% 20%;
+    --ring: 193 100% 54%;
+    --radius: 0.8rem;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 15%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 193 100% 54%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 173 97% 58%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 222 47% 20%;
+    --muted-foreground: 210 40% 65%;
+    --accent: 173 97% 48%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 245 100% 68%;
+    --input: 222 47% 20%;
+    --ring: 193 100% 54%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes background-pan {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes float {
+	0% {
+		transform: translatey(0px);
+	}
+	50% {
+		transform: translatey(-10px);
+	}
+	100% {
+		transform: translatey(0px);
+	}
+}
+
+@keyframes move-orb {
+  0% {
+    transform: translate(-10vw, -10vh) scale(1);
+    opacity: 0.5;
+  }
+  25% {
+    transform: translate(40vw, 20vh) scale(1.2);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translate(90vw, -5vh) scale(0.9);
+    opacity: 0.6;
+  }
+  75% {
+    transform: translate(30vw, 30vh) scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-10vw, -10vh) scale(1);
+    opacity: 0.5;
+  }
+}
+
+
+.animate-fadeInUp {
+  animation: fadeInUp 1s ease-out forwards;
+}
+
+.animate-background-pan {
+  background-size: 200% 200%;
+  animation: background-pan 15s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-move-orb {
+  animation: move-orb 20s ease-in-out infinite;
+}

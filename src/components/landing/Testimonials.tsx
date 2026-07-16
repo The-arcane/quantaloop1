@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import React from "react";
 
 interface Member {
-  id: number;
+  id: string | number;
   name: string;
   position: string;
   image_url: string | null;

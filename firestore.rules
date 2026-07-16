@@ -1,0 +1,9 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // All form writes go through the trusted Next.js server after token verification.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

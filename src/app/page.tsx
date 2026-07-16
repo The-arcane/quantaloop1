@@ -6,16 +6,8 @@ import Hero from "@/components/landing/Hero";
 import Mission from "@/components/landing/Mission";
 import Testimonials from "@/components/landing/Testimonials";
 import UpcomingEvents from "@/components/landing/UpcomingEvents";
-import { supabase } from "@/lib/supabase";
 
-async function getMembers() {
-  const { data: members, error } = await supabase.from('members').select('*');
-  if (error) {
-    console.error('Error fetching members:', error);
-    return [];
-  }
-
-  const hierarchy = [
+const members = [
     "Raunaq Adlakha",
     "Vrinda Jain",
     "Ipshita Sethi",
@@ -30,26 +22,16 @@ async function getMembers() {
     "Ginim Narang",
     "Aanjanay Arora",
     "Mandeep Singh",
-    "Adarsh Shukla"
-  ];
+    "Adarsh Shukla",
+  ].map((name, index) => ({
+    id: `member-${index + 1}`,
+    name,
+    position: "QuantaLoop Team",
+    image_url: null,
+    short_description: "Building, learning, and innovating together with QuantaLoop.",
+  }));
 
-  const sortedMembers = members.sort((a, b) => {
-    const indexA = hierarchy.indexOf(a.name);
-    const indexB = hierarchy.indexOf(b.name);
-
-    if (indexA === -1 && indexB === -1) return 0; // Both not in hierarchy, keep original order
-    if (indexA === -1) return 1; // a is not in hierarchy, send to end
-    if (indexB === -1) return -1; // b is not in hierarchy, send to end
-
-    return indexA - indexB;
-  });
-
-  return sortedMembers;
-}
-
-export default async function Home() {
-  const members = await getMembers();
-
+export default function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header />

@@ -22,6 +22,8 @@ import { useEffect, useState } from "react"
 import { Loader2, PartyPopper } from "lucide-react"
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import Link from "next/link"
+import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth"
+import { getFirebaseAuth } from "@/lib/firebase-client"
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
@@ -41,10 +43,20 @@ export function ApplicationForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
+  const [user, setUser] = useState<User | null>(null)
 
   useEffect(() => {
     setIsMounted(true)
+    return onAuthStateChanged(getFirebaseAuth(), setUser)
   }, [])
+
+  async function signIn() {
+    try {
+      await signInWithPopup(getFirebaseAuth(), new GoogleAuthProvider())
+    } catch {
+      toast({ title: "Google sign-in failed", description: "Please try again.", variant: "destructive" })
+    }
+  }
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -60,6 +72,10 @@ export function ApplicationForm() {
   })
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!user) {
+      toast({ title: "Sign in required", description: "Please continue with Google first.", variant: "destructive" })
+      return
+    }
     setIsSubmitting(true)
     
     // Create a new object for submission with ERP in uppercase
@@ -68,7 +84,7 @@ export function ApplicationForm() {
         erp: values.erp.toUpperCase(),
     };
 
-    const result = await submitApplication(submissionValues);
+    const result = await submitApplication(submissionValues, await user.getIdToken(true));
     setIsSubmitting(false)
 
     if (result.success) {
@@ -115,6 +131,19 @@ export function ApplicationForm() {
       </AlertDialog>
 
       <Form {...form}>
+        <div className="mb-6 rounded-md border border-purple-500/20 p-4">
+          {user ? (
+            <div className="flex items-center justify-between gap-4">
+              <span className="truncate text-sm">Signed in as {user.email}</span>
+              <Button type="button" variant="outline" onClick={() => signOut(getFirebaseAuth())}>Sign out</Button>
+            </div>
+          ) : (
+            <Button type="button" variant="outline" className="w-full" onClick={signIn}>
+              Continue with Google
+            </Button>
+          )}
+          <p className="mt-2 text-xs text-muted-foreground">Maximum 2 registrations per Google account.</p>
+        </div>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <div className={fieldContainerClass}>
             <FormField
@@ -290,7 +319,7 @@ export function ApplicationForm() {
               )}
             />
           </div>
-          <Button type="submit" size="lg" className="w-full bg-primary hover:bg-secondary text-black rounded-full shadow-lg shadow-primary/40 hover:shadow-secondary/60 transition-all duration-300 hover:scale-105" disabled={isSubmitting}>
+          <Button type="submit" size="lg" className="w-full bg-primary hover:bg-secondary text-black rounded-full shadow-lg shadow-primary/40 hover:shadow-secondary/60 transition-all duration-300 hover:scale-105" disabled={isSubmitting || !user}>
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Submit Application
           </Button>

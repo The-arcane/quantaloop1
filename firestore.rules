@@ -1,7 +1,55 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // All form writes go through the trusted Next.js server after token verification.
+    function signedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    match /applications/{applicationId} {
+      allow create: if signedIn()
+        && request.resource.data.account_uid == request.auth.uid
+        && request.resource.data.account_email == request.auth.token.email
+        && request.resource.data.erp is string
+        && request.resource.data.erp.size() >= 3
+        && request.resource.data.erp.size() <= 40
+        && request.resource.data.registration_number >= 1
+        && request.resource.data.registration_number <= 2
+        && getAfter(/databases/$(database)/documents/registration_limits/$(request.auth.uid)).data.count == request.resource.data.registration_number
+        && getAfter(/databases/$(database)/documents/registration_limits/$(request.auth.uid)).data.last_application_id == applicationId
+        && getAfter(/databases/$(database)/documents/registered_erps/$(request.resource.data.erp)).data.application_id == applicationId
+        && getAfter(/databases/$(database)/documents/registered_erps/$(request.resource.data.erp)).data.uid == request.auth.uid;
+      allow read, update, delete: if false;
+    }
+
+    match /registered_erps/{erp} {
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.erp == erp
+        && request.resource.data.application_id is string
+        && getAfter(/databases/$(database)/documents/applications/$(request.resource.data.application_id)).data.account_uid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/applications/$(request.resource.data.application_id)).data.erp == erp;
+      allow get: if signedIn();
+      allow list, update, delete: if false;
+    }
+
+    match /registration_limits/{uid} {
+      allow create: if signedIn()
+        && uid == request.auth.uid
+        && request.resource.data.count == 1
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.last_application_id is string
+        && getAfter(/databases/$(database)/documents/applications/$(request.resource.data.last_application_id)).data.registration_number == 1;
+      allow update: if signedIn()
+        && uid == request.auth.uid
+        && resource.data.count < 2
+        && request.resource.data.count == resource.data.count + 1
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.last_application_id is string
+        && getAfter(/databases/$(database)/documents/applications/$(request.resource.data.last_application_id)).data.registration_number == request.resource.data.count;
+      allow read: if signedIn() && uid == request.auth.uid;
+      allow delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

@@ -17,13 +17,13 @@ import { Input } from "@/components/ui/input"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { submitApplication } from "@/app/join/actions"
 import { useEffect, useState } from "react"
 import { Loader2, PartyPopper } from "lucide-react"
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import Link from "next/link"
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth"
-import { getFirebaseAuth } from "@/lib/firebase-client"
+import { collection, doc, runTransaction, serverTimestamp } from "firebase/firestore"
+import { getFirebaseAuth, getFirebaseDb } from "@/lib/firebase-client"
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
@@ -44,6 +44,7 @@ export function ApplicationForm() {
   const [isMounted, setIsMounted] = useState(false)
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
   const [user, setUser] = useState<User | null>(null)
+  const [isSigningIn, setIsSigningIn] = useState(false)
 
   useEffect(() => {
     setIsMounted(true)
@@ -51,10 +52,13 @@ export function ApplicationForm() {
   }, [])
 
   async function signIn() {
+    setIsSigningIn(true)
     try {
       await signInWithPopup(getFirebaseAuth(), new GoogleAuthProvider())
     } catch {
       toast({ title: "Google sign-in failed", description: "Please try again.", variant: "destructive" })
+    } finally {
+      setIsSigningIn(false)
     }
   }
 
@@ -77,25 +81,54 @@ export function ApplicationForm() {
       return
     }
     setIsSubmitting(true)
-    
-    // Create a new object for submission with ERP in uppercase
-    const submissionValues = {
-        ...values,
-        erp: values.erp.toUpperCase(),
-    };
+    const erp = values.erp.trim().toUpperCase()
 
-    const result = await submitApplication(submissionValues, await user.getIdToken(true));
-    setIsSubmitting(false)
+    try {
+      const db = getFirebaseDb()
+      await runTransaction(db, async (transaction) => {
+        const accountRef = doc(db, "registration_limits", user.uid)
+        const erpRef = doc(db, "registered_erps", erp)
+        const applicationRef = doc(collection(db, "applications"))
+        const accountSnapshot = await transaction.get(accountRef)
+        const erpSnapshot = await transaction.get(erpRef)
+        const count = accountSnapshot.data()?.count ?? 0
 
-    if (result.success) {
+        if (count >= 2) throw new Error("REGISTRATION_LIMIT")
+        if (erpSnapshot.exists()) throw new Error("ERP_EXISTS")
+
+        transaction.set(applicationRef, {
+          ...values,
+          erp,
+          hackathon_participation: values.hackathon_participation === "Yes",
+          account_email: user.email,
+          account_uid: user.uid,
+          registration_number: count + 1,
+          created_at: serverTimestamp(),
+        })
+        transaction.set(erpRef, { application_id: applicationRef.id, uid: user.uid, erp })
+        transaction.set(accountRef, {
+          count: count + 1,
+          email: user.email,
+          last_application_id: applicationRef.id,
+          updated_at: serverTimestamp(),
+        })
+      })
+
       setShowSuccessDialog(true)
       form.reset()
-    } else {
+    } catch (error) {
+      const message = error instanceof Error && error.message === "REGISTRATION_LIMIT"
+        ? "This Google account has already used its 2 registrations."
+        : error instanceof Error && error.message === "ERP_EXISTS"
+          ? "This ERP ID is already registered."
+          : "Could not submit the application. Please try again."
       toast({
         title: "Error",
-        description: result.message || "There was an error submitting your application. Please try again.",
+        description: message,
         variant: "destructive",
       })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -103,6 +136,21 @@ export function ApplicationForm() {
     return (
       <div className="flex justify-center items-center p-8">
         <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="rounded-lg border border-purple-500/20 bg-card/60 p-6 text-center">
+        <h2 className="font-headline text-xl font-semibold">Sign in to fill the application</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Continue with your verified Google account. Maximum 2 registrations per account.
+        </p>
+        <Button type="button" className="mt-6 w-full" onClick={signIn} disabled={isSigningIn}>
+          {isSigningIn && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Login with Google to fill the form
+        </Button>
       </div>
     )
   }
@@ -132,16 +180,10 @@ export function ApplicationForm() {
 
       <Form {...form}>
         <div className="mb-6 rounded-md border border-purple-500/20 p-4">
-          {user ? (
-            <div className="flex items-center justify-between gap-4">
-              <span className="truncate text-sm">Signed in as {user.email}</span>
-              <Button type="button" variant="outline" onClick={() => signOut(getFirebaseAuth())}>Sign out</Button>
-            </div>
-          ) : (
-            <Button type="button" variant="outline" className="w-full" onClick={signIn}>
-              Continue with Google
-            </Button>
-          )}
+          <div className="flex items-center justify-between gap-4">
+            <span className="truncate text-sm">Signed in as {user.email}</span>
+            <Button type="button" variant="outline" onClick={() => signOut(getFirebaseAuth())}>Sign out</Button>
+          </div>
           <p className="mt-2 text-xs text-muted-foreground">Maximum 2 registrations per Google account.</p>
         </div>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

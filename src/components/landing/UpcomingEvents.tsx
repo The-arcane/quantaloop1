@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { GradientCard } from "./GradientCard";
 
 export default function UpcomingEvents() {
@@ -16,10 +18,13 @@ export default function UpcomingEvents() {
                   Coming Soon
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-6">
                 <p className="text-muted-foreground font-body">
                   We are preparing something exciting. Stay tuned for upcoming QuantaLoop events.
                 </p>
+                <Button asChild size="lg" className="font-headline uppercase">
+                  <Link href="/launchpad">Register</Link>
+                </Button>
               </CardContent>
             </Card>
           </GradientCard>

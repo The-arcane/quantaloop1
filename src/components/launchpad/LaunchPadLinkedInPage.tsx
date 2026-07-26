@@ -64,6 +64,26 @@ export async function copyPostToClipboard(post: string): Promise<boolean> {
   }
 }
 
+function copyPostSynchronously(post: string): boolean {
+  try {
+    const textarea = document.createElement("textarea");
+    textarea.value = post;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    textarea.setSelectionRange(0, textarea.value.length);
+    const copied = document.execCommand("copy");
+    textarea.remove();
+    return copied;
+  } catch {
+    return false;
+  }
+}
+
 export async function downloadLaunchPadImage(image: LaunchPadImage): Promise<void> {
   const response = await fetch(image.downloadUrl);
   if (!response.ok) throw new Error("Image download failed");
@@ -223,6 +243,12 @@ export default function LaunchPadLinkedInPage() {
     if (posting) return;
     setPosting(true);
 
+    // Copy while this page still owns the user gesture and browser focus.
+    const copiedSynchronously = copyPostSynchronously(renderedPost);
+    const copyPromise = copiedSynchronously
+      ? Promise.resolve(true)
+      : copyPostToClipboard(renderedPost);
+
     // Long posts are not sent in LinkedIn's URL because LinkedIn truncates that query.
     // Opening synchronously from the click keeps this from being blocked as a popup.
     const linkedInTab = window.open(
@@ -230,7 +256,7 @@ export default function LaunchPadLinkedInPage() {
       "_blank",
       "noopener,noreferrer",
     );
-    const success = await copyPostToClipboard(renderedPost);
+    const success = await copyPromise;
 
     if (!success) {
       toast({

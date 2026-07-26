@@ -223,37 +223,6 @@ export default function LaunchPadLinkedInPage() {
     if (posting) return;
     setPosting(true);
 
-    const shareData: ShareData = {
-      title: post?.title ?? "LaunchPad: Profile to Product",
-      text: renderedPost,
-    };
-
-    if (
-      typeof navigator.share === "function" &&
-      (typeof navigator.canShare !== "function" || navigator.canShare(shareData))
-    ) {
-      try {
-        await navigator.share(shareData);
-        setCopied(true);
-        toast({
-          title: "Full post shared",
-          description: "Before publishing, replace all placeholders with real LinkedIn mentions.",
-        });
-        window.setTimeout(() => setCopied(false), 2000);
-      } catch (error) {
-        if (!(error instanceof DOMException && error.name === "AbortError")) {
-          toast({
-            variant: "destructive",
-            title: "The share menu could not open",
-            description: "Use Copy Post and paste the complete text on LinkedIn.",
-          });
-        }
-      } finally {
-        setPosting(false);
-      }
-      return;
-    }
-
     // Long posts are not sent in LinkedIn's URL because LinkedIn truncates that query.
     // Opening synchronously from the click keeps this from being blocked as a popup.
     const linkedInTab = window.open(
@@ -343,7 +312,7 @@ export default function LaunchPadLinkedInPage() {
                   <Button type="button" onClick={generate} variant="outline" className="!border-blue-200 !bg-white !text-blue-800 shadow-sm hover:!bg-blue-50"><RefreshCw />Generate Another Post</Button>
                   <Button type="button" onClick={postToLinkedIn} disabled={posting} className="!bg-[#0a66c2] !text-white shadow-sm hover:!bg-[#084e96]">{posting ? <Loader2 className="animate-spin" /> : <ArrowUpRight />}{posting ? "Opening LinkedIn..." : "Post to LinkedIn"}</Button>
                 </div>
-                <p className="mt-4 text-center text-xs leading-5 text-slate-500">On supported devices, choose LinkedIn from the share menu to send the complete post. Otherwise, we’ll copy the full post and open LinkedIn for you.</p>
+                <p className="mt-4 text-center text-xs leading-5 text-slate-500">We’ll copy the complete post and open only LinkedIn. Paste it in the composer, then replace the placeholders with real mentions.</p>
               </div>
             </article>
 

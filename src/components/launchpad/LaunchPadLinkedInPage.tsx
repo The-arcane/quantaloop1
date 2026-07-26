@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
-  ArrowUpRight,
   Check,
   CheckCircle2,
   Clipboard,
@@ -14,8 +13,6 @@ import {
 } from "lucide-react";
 import { QuantaLoopLogo } from "@/components/QuantaLoopLogo";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import {
   launchPadLinkedInPosts,
@@ -27,20 +24,6 @@ import {
 } from "@/data/launchpadImages";
 import { cn } from "@/lib/utils";
 
-export type MentionValues = {
-  college: string;
-  society: string;
-  udaySharma: string;
-  alokKumar: string;
-};
-
-export const DEFAULT_MENTIONS: MentionValues = {
-  college: "BVIMR",
-  society: "QuantaLoop — The First Technical Society of BVIMR",
-  udaySharma: "Uday Sharma",
-  alokKumar: "Alok Kumar",
-};
-
 const generationMessages = [
   "Understanding your event experience...",
   "Organising your key learnings...",
@@ -48,23 +31,6 @@ const generationMessages = [
   "Refining your professional tone...",
   "Preparing your LinkedIn post...",
 ];
-
-function mentionOrDefault(value: string, fallback: string): string {
-  return value.trim() || fallback;
-}
-
-export function applyMentions(template: string, mentions: MentionValues): string {
-  const values = {
-    "[COLLEGE]": mentionOrDefault(mentions.college, DEFAULT_MENTIONS.college),
-    "[SOCIETY]": mentionOrDefault(mentions.society, DEFAULT_MENTIONS.society),
-    "[UDAY_SHARMA]": mentionOrDefault(mentions.udaySharma, DEFAULT_MENTIONS.udaySharma),
-    "[ALOK_KUMAR]": mentionOrDefault(mentions.alokKumar, DEFAULT_MENTIONS.alokKumar),
-  };
-  return Object.entries(values).reduce(
-    (post, [placeholder, value]) => post.split(placeholder).join(value),
-    template,
-  );
-}
 
 function shuffledPosts(): LaunchPadLinkedInPost[] {
   const posts = [...launchPadLinkedInPosts];
@@ -110,50 +76,12 @@ export async function downloadLaunchPadImage(image: LaunchPadImage): Promise<voi
   window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
 }
 
-type MentionFieldsProps = {
-  mentions: MentionValues;
-  onChange: (field: keyof MentionValues, value: string) => void;
-};
-
-function MentionFields({ mentions, onChange }: MentionFieldsProps) {
-  const fields: Array<{ key: keyof MentionValues; label: string }> = [
-    { key: "college", label: "College" },
-    { key: "society", label: "Organising Society" },
-    { key: "udaySharma", label: "Uday Sharma" },
-    { key: "alokKumar", label: "Alok Kumar" },
-  ];
-  return (
-    <section className="rounded-3xl border border-blue-100 bg-white p-5 shadow-[0_20px_60px_-35px_rgba(30,64,175,.35)] sm:p-8">
-      <div className="mb-6">
-        <p className="mb-2 text-xs font-bold uppercase tracking-[.18em] text-blue-600">Personalise</p>
-        <h2 className="text-2xl font-bold text-slate-950">Add LinkedIn Mentions</h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-          Paste the exact LinkedIn name or mention text for each organisation and speaker before copying your post.
-        </p>
-      </div>
-      <div className="grid gap-5 sm:grid-cols-2">
-        {fields.map((field) => (
-          <div className="space-y-2" key={field.key}>
-            <Label htmlFor={field.key} className="text-slate-800">{field.label}</Label>
-            <Input
-              id={field.key}
-              value={mentions[field.key]}
-              onChange={(event) => onChange(field.key, event.target.value)}
-              className="h-12 border-slate-200 bg-slate-50 text-slate-950 focus-visible:ring-blue-500"
-            />
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function PostingSteps({ hasPost, copied, downloaded }: { hasPost: boolean; copied: boolean; downloaded: boolean }) {
   const steps = [
-    { label: "Add mentions", complete: true },
-    { label: "Generate and copy your post", complete: hasPost && copied },
+    { label: "Generate your post", complete: hasPost },
+    { label: "Copy the post", complete: copied },
     { label: "Download an event image", complete: downloaded },
-    { label: "Open LinkedIn and publish", complete: false },
+    { label: "Paste, replace placeholders and publish", complete: false },
   ];
   return (
     <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Publishing steps">
@@ -223,7 +151,6 @@ function LaunchPadImageGallery({ selectedId, downloadingId, onSelect, onDownload
 
 export default function LaunchPadLinkedInPage() {
   const { toast } = useToast();
-  const [mentions, setMentions] = useState<MentionValues>(DEFAULT_MENTIONS);
   const [queue, setQueue] = useState<LaunchPadLinkedInPost[]>([]);
   const [post, setPost] = useState<LaunchPadLinkedInPost | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -232,9 +159,8 @@ export default function LaunchPadLinkedInPage() {
   const [selectedId, setSelectedId] = useState(1);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const [downloaded, setDownloaded] = useState(false);
-  const [posting, setPosting] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
-  const renderedPost = useMemo(() => (post ? applyMentions(post.template, mentions) : ""), [post, mentions]);
+  const renderedPost = post?.template ?? "";
 
   const generate = async () => {
     if (generating) return;
@@ -285,22 +211,6 @@ export default function LaunchPadLinkedInPage() {
     }
   };
 
-  const postToLinkedIn = async () => {
-    if (posting) return;
-    setPosting(true);
-    const linkedInTab = window.open("https://www.linkedin.com/feed/?shareActive=true", "_blank");
-    const success = await copyPostToClipboard(renderedPost);
-    if (!linkedInTab) {
-      toast({ variant: "destructive", title: "LinkedIn was blocked", description: "Allow pop-ups, then try again." });
-    } else if (!success) {
-      toast({ variant: "destructive", title: "LinkedIn opened, but copying failed", description: "Copy the post manually from this page." });
-    } else {
-      setCopied(true);
-      toast({ title: "Your post has been copied.", description: "Paste it on LinkedIn, upload the downloaded image and publish." });
-    }
-    setPosting(false);
-  };
-
   const selectedImage = launchPadImages.find((image) => image.id === selectedId) ?? launchPadImages[0];
 
   return (
@@ -317,13 +227,12 @@ export default function LaunchPadLinkedInPage() {
         <section className="relative mx-auto max-w-6xl px-4 py-16 text-center sm:px-6 sm:py-24">
           <span className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-xs font-bold uppercase tracking-[.14em] text-blue-700"><Sparkles size={15} /> Profile to Product</span>
           <h1 className="mx-auto mt-6 max-w-4xl text-4xl font-black tracking-tight text-blue-950 sm:text-6xl">LaunchPad LinkedIn Post Assistant</h1>
-          <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">Turn your learning experience into a professional LinkedIn update. Add the correct mentions, generate your post, download an event image and share your LaunchPad experience.</p>
+          <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">Generate your post, copy it, replace the marked placeholders with real LinkedIn mentions and share your LaunchPad experience.</p>
         </section>
       </div>
 
       <div className="mx-auto max-w-6xl space-y-8 px-4 py-10 sm:px-6 sm:py-14">
         <PostingSteps hasPost={Boolean(post)} copied={copied} downloaded={downloaded} />
-        <MentionFields mentions={mentions} onChange={(field, value) => setMentions((current) => ({ ...current, [field]: value }))} />
 
         <section className="rounded-3xl bg-gradient-to-br from-blue-950 via-blue-900 to-blue-700 p-6 text-center text-white shadow-xl shadow-blue-200 sm:p-10" aria-live="polite">
           {generating ? (
@@ -335,7 +244,7 @@ export default function LaunchPadLinkedInPage() {
           ) : (
             <>
               <h2 className="text-2xl font-bold">{post ? "Ready for another perspective?" : "Create your professional event post"}</h2>
-              <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-blue-100">Your mentions stay in place, and only one polished post is shown at a time.</p>
+              <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-blue-100">Only one polished post is shown at a time, with clear placeholders for LinkedIn mentions.</p>
               <Button type="button" size="lg" onClick={generate} className="mt-6 bg-cyan-300 font-bold text-blue-950 hover:bg-cyan-200"><Sparkles />{post ? "Generate Another Post" : "Generate My LinkedIn Post"}</Button>
             </>
           )}
@@ -348,14 +257,15 @@ export default function LaunchPadLinkedInPage() {
                 <div className="flex items-start gap-4"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-blue-700 text-white"><Sparkles /></span><div><p className="font-bold text-blue-700">Your LinkedIn Post is Ready</p><h2 className="mt-1 text-2xl font-bold text-blue-950">{post.title}</h2><span className="mt-3 inline-block rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600">{post.tone}</span></div></div>
               </div>
               <div className="p-5 sm:p-8">
+                <div className="mb-6 rounded-2xl border border-cyan-200 bg-cyan-50 p-4 text-sm leading-6 text-blue-950">
+                  After pasting on LinkedIn, replace <strong>[COLLEGE]</strong>, <strong>[SOCIETY]</strong>, <strong>[UDAY_SHARMA]</strong> and <strong>[ALOK_KUMAR]</strong> with actual LinkedIn mentions.
+                </div>
                 <div className="whitespace-pre-wrap text-[15px] leading-7 text-slate-700 selection:bg-cyan-200">{renderedPost}</div>
                 <div className="mt-6 flex gap-4 border-t border-slate-100 pt-4 text-xs font-semibold text-slate-500"><span>{renderedPost.trim().split(/\s+/).length} words</span><span>{renderedPost.length} characters</span></div>
-                <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                <div className="mt-6 grid gap-3 sm:grid-cols-2">
                   <Button type="button" onClick={copy} variant="outline" className="border-blue-200 text-blue-800 hover:bg-blue-50">{copied ? <Check /> : <Clipboard />}{copied ? "Copied" : "Copy Post"}</Button>
                   <Button type="button" onClick={generate} variant="outline" className="border-blue-200 text-blue-800 hover:bg-blue-50"><RefreshCw />Generate Another Post</Button>
-                  <Button type="button" onClick={postToLinkedIn} disabled={posting} className="bg-[#0a66c2] text-white hover:bg-[#084e96]">{posting ? <Loader2 className="animate-spin" /> : <ArrowUpRight />}Post to LinkedIn</Button>
                 </div>
-                <p className="mt-4 text-center text-xs leading-5 text-slate-500">We’ll copy your post and open LinkedIn. Paste the post and attach your downloaded image before publishing.</p>
               </div>
             </article>
 
@@ -367,8 +277,8 @@ export default function LaunchPadLinkedInPage() {
         )}
 
         <footer className="rounded-2xl border border-blue-100 bg-blue-50 p-5 text-sm leading-6 text-slate-600">
-          <p className="flex gap-2 font-semibold text-blue-950"><CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-cyan-600" />Your mention text stays in this browser and is not saved.</p>
-          <p className="mt-2 pl-7">LinkedIn does not support reliable automatic post pre-filling. Copy the post, download your chosen image, then paste and attach it manually.</p>
+          <p className="flex gap-2 font-semibold text-blue-950"><CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-cyan-600" />LinkedIn mentions must be selected inside LinkedIn itself.</p>
+          <p className="mt-2 pl-7">Copy the post, paste it into LinkedIn, replace all four placeholders with the correct tagged pages or people, and attach your downloaded image.</p>
         </footer>
       </div>
     </main>

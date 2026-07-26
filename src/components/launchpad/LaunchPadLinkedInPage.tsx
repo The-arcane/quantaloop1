@@ -2,6 +2,8 @@
 
 import { useRef, useState } from "react";
 import {
+  ArrowUpRight,
+  AlertTriangle,
   Check,
   CheckCircle2,
   Clipboard,
@@ -159,6 +161,7 @@ export default function LaunchPadLinkedInPage() {
   const [selectedId, setSelectedId] = useState(1);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const [downloaded, setDownloaded] = useState(false);
+  const [posting, setPosting] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
   const renderedPost = post?.template ?? "";
 
@@ -191,7 +194,10 @@ export default function LaunchPadLinkedInPage() {
       return false;
     }
     setCopied(true);
-    toast({ title: "Post copied to clipboard" });
+    toast({
+      title: "Post copied to clipboard",
+      description: "After pasting, replace all four placeholders with real LinkedIn mentions.",
+    });
     window.setTimeout(() => setCopied(false), 2000);
     return true;
   };
@@ -212,6 +218,46 @@ export default function LaunchPadLinkedInPage() {
   };
 
   const selectedImage = launchPadImages.find((image) => image.id === selectedId) ?? launchPadImages[0];
+
+  const postToLinkedIn = async () => {
+    if (posting) return;
+    setPosting(true);
+
+    const linkedInComposerUrl =
+      `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(renderedPost)}`;
+
+    // Opening synchronously from the click keeps this from being blocked as a popup.
+    const linkedInTab = window.open(
+      linkedInComposerUrl,
+      "_blank",
+      "noopener,noreferrer",
+    );
+    const success = await copyPostToClipboard(renderedPost);
+
+    if (!success) {
+      toast({
+        variant: "destructive",
+        title: "LinkedIn opened, but the post could not be copied",
+        description: "Return here, press Copy Post, then paste it manually on LinkedIn.",
+      });
+    } else {
+      setCopied(true);
+      toast({
+        title: "Post prepared — LinkedIn is opening",
+        description: "If it is not prefilled, paste it. Then replace all placeholders with real mentions.",
+      });
+      window.setTimeout(() => setCopied(false), 2000);
+    }
+
+    if (!linkedInTab) {
+      toast({
+        variant: "destructive",
+        title: "Your browser blocked LinkedIn",
+        description: "Allow pop-ups for this site, then press Post to LinkedIn again.",
+      });
+    }
+    setPosting(false);
+  };
 
   return (
     <main className="min-h-screen bg-[#f7faff] text-slate-950">
@@ -257,15 +303,18 @@ export default function LaunchPadLinkedInPage() {
                 <div className="flex items-start gap-4"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-blue-700 text-white"><Sparkles /></span><div><p className="font-bold text-blue-700">Your LinkedIn Post is Ready</p><h2 className="mt-1 text-2xl font-bold text-blue-950">{post.title}</h2><span className="mt-3 inline-block rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600">{post.tone}</span></div></div>
               </div>
               <div className="p-5 sm:p-8">
-                <div className="mb-6 rounded-2xl border border-cyan-200 bg-cyan-50 p-4 text-sm leading-6 text-blue-950">
-                  After pasting on LinkedIn, replace <strong>[COLLEGE]</strong>, <strong>[SOCIETY]</strong>, <strong>[UDAY_SHARMA]</strong> and <strong>[ALOK_KUMAR]</strong> with actual LinkedIn mentions.
+                <div className="mb-6 flex gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                  <p><strong>Important:</strong> After pasting on LinkedIn, replace <strong>[COLLEGE]</strong>, <strong>[SOCIETY]</strong>, <strong>[UDAY_SHARMA]</strong> and <strong>[ALOK_KUMAR]</strong> with actual LinkedIn mentions.</p>
                 </div>
                 <div className="whitespace-pre-wrap text-[15px] leading-7 text-slate-700 selection:bg-cyan-200">{renderedPost}</div>
                 <div className="mt-6 flex gap-4 border-t border-slate-100 pt-4 text-xs font-semibold text-slate-500"><span>{renderedPost.trim().split(/\s+/).length} words</span><span>{renderedPost.length} characters</span></div>
-                <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                  <Button type="button" onClick={copy} variant="outline" className="border-blue-200 text-blue-800 hover:bg-blue-50">{copied ? <Check /> : <Clipboard />}{copied ? "Copied" : "Copy Post"}</Button>
-                  <Button type="button" onClick={generate} variant="outline" className="border-blue-200 text-blue-800 hover:bg-blue-50"><RefreshCw />Generate Another Post</Button>
+                <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                  <Button type="button" onClick={copy} variant="outline" className="!border-blue-200 !bg-white !text-blue-800 shadow-sm hover:!bg-blue-50">{copied ? <Check /> : <Clipboard />}{copied ? "Copied" : "Copy Post"}</Button>
+                  <Button type="button" onClick={generate} variant="outline" className="!border-blue-200 !bg-white !text-blue-800 shadow-sm hover:!bg-blue-50"><RefreshCw />Generate Another Post</Button>
+                  <Button type="button" onClick={postToLinkedIn} disabled={posting} className="!bg-[#0a66c2] !text-white shadow-sm hover:!bg-[#084e96]">{posting ? <Loader2 className="animate-spin" /> : <ArrowUpRight />}{posting ? "Opening LinkedIn..." : "Post to LinkedIn"}</Button>
                 </div>
+                <p className="mt-4 text-center text-xs leading-5 text-slate-500">We’ll send the post text to LinkedIn and copy it as a fallback. Replace the placeholders with real mentions before publishing.</p>
               </div>
             </article>
 

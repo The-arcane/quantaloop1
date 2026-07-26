@@ -158,7 +158,7 @@ function LaunchPadImageGallery({ selectedId, downloadingId, onSelect, onDownload
                 <div className="p-4 font-semibold text-slate-900">{image.title}</div>
               </button>
               <div className="px-4 pb-4">
-                <Button type="button" variant="outline" className="w-full border-blue-200 text-blue-800 hover:bg-blue-50" onClick={() => onDownload(image)} disabled={downloadingId !== null}>
+                <Button type="button" variant="outline" className="w-full !border-blue-200 !bg-white !text-blue-800 shadow-sm hover:!border-blue-300 hover:!bg-blue-50 disabled:!bg-slate-100 disabled:!text-slate-400" onClick={() => onDownload(image)} disabled={downloadingId !== null}>
                   {downloadingId === image.id ? <Loader2 className="animate-spin" /> : <Download />}
                   Download
                 </Button>
@@ -344,7 +344,7 @@ export default function LaunchPadLinkedInPage() {
 
             <LaunchPadImageGallery selectedId={selectedId} downloadingId={downloadingId} onSelect={setSelectedId} onDownload={download} />
             <div className="mt-5 flex justify-center">
-              <Button type="button" size="lg" onClick={() => download(selectedImage)} disabled={downloadingId !== null} className="bg-blue-700 text-white hover:bg-blue-800">{downloadingId ? <Loader2 className="animate-spin" /> : <Download />}Download Selected Image</Button>
+              <Button type="button" size="lg" onClick={() => download(selectedImage)} disabled={downloadingId !== null} className="!bg-blue-700 !text-white shadow-md hover:!bg-blue-800 disabled:!bg-slate-300 disabled:!text-slate-500">{downloadingId ? <Loader2 className="animate-spin" /> : <Download />}Download Selected Image</Button>
             </div>
           </div>
         )}
